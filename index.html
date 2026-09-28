@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PrintFlow - Printing Business</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<aside class="sidebar">
+
+    <div class="logo">
+        <div class="logo-box">PF</div>
+        <div>
+            <h2>PrintFlow</h2>
+            <span>Order Manager</span>
+        </div>
+    </div>
+
+    <nav>
+        <button class="nav-btn active" onclick="showPage('dashboard')">
+            🏠 Dashboard
+        </button>
+
+        <button class="nav-btn" onclick="showPage('newOrder')">
+            ➕ New Order
+        </button>
+
+        <button class="nav-btn" onclick="showPage('orders')">
+            📋 All Orders
+        </button>
+
+        <button class="nav-btn" onclick="showPage('customers')">
+            👤 Customers
+        </button>
+    </nav>
+
+    <div class="sidebar-bottom">
+        Printing Business Management
+    </div>
+
+</aside>
+
+
+<main class="main">
+
+    <header class="topbar">
+
+        <div>
+            <p class="small-title">PRINTING BUSINESS</p>
+            <h1 id="pageTitle">Dashboard</h1>
+        </div>
+
+        <button class="new-order-btn" onclick="showPage('newOrder')">
+            + New Order
+        </button>
+
+    </header>
+
+
+    <!-- DASHBOARD -->
+
+    <section id="dashboard" class="page active">
+
+        <div class="stats">
+
+            <div class="stat-card">
+                <span>Total Orders</span>
+                <h2 id="totalOrders">0</h2>
+            </div>
+
+            <div class="stat-card">
+                <span>Pending Orders</span>
+                <h2 id="pendingOrders">0</h2>
+            </div>
+
+            <div class="stat-card">
+                <span>Ready Orders</span>
+                <h2 id="readyOrders">0</h2>
+            </div>
+
+            <div class="stat-card">
+                <span>Amount Due</span>
+                <h2 id="totalDue">₹0</h2>
+            </div>
+
+        </div>
+
+
+        <div class="card">
+
+            <div class="card-header">
+
+                <div>
+                    <h2>Recent Orders</h2>
+                    <p>Your latest printing orders</p>
+                </div>
+
+                <button onclick="showPage('orders')" class="view-btn">
+                    View All →
+                </button>
+
+            </div>
+
+            <div id="recentOrders" class="empty">
+                No orders yet.
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- NEW ORDER -->
+
+    <section id="newOrder" class="page">
+
+        <div class="card">
+
+            <div class="card-header">
+
+                <div>
+                    <h2>Create New Order</h2>
+                    <p>Enter customer and printing details</p>
+                </div>
+
+            </div>
+
+
+            <form id="orderForm">
+
+                <div class="form-grid">
+
+                    <div class="form-group">
+                        <label>Customer Name</label>
+                        <input
+                            type="text"
+                            id="customerName"
+                            placeholder="Name"
+                            required
+                        >
+                    </div>
+
+
+                    <div class="form-group">
+                        <label>Mobile Number</label>
+                        <input
+                            type="tel"
+                            id="customerPhone"
+                            placeholder="number"
+                            required
+                        >
+                    </div>
+
+
+                    <div class="form-group">
+                        <label>Product</label>
+
+                        <select id="product" required>
+                            <option value="">Select Product</option>
+                            <option>Visiting Card</option>
+                            <option>Banner</option>
+                            <option>Pamphlet</option>
+                            <option>Flyer</option>
+                            <option>Brochure</option>
+                            <option>Sticker</option>
+                            <option>Poster</option>
+                            <option>Letterhead</option>
+                            <option>Other</option>
+                        </select>
+
+                    </div>
+
+
+                    <div class="form-group">
+                        <label>Quantity</label>
+
+                        <input
+                            type="number"
+                            id="quantity"
+                            placeholder="0"
+                            min="1"
+                            required
+                        >
+                    </div>
+
+
+                    <div class="form-group">
+                        <label>Size</label>
+
+                        <input
+                            type="text"
+                            id="size"
+                            placeholder="3.5 x 2 inch"
+                        >
+                    </div>
+
+
+                    <div class="form-group">
+                        <label>Paper / Material</label>
+
+                        <input
+                            type="text"
+                            id="material"
+                            placeholder="300 GSM Art Card"
+                        >
+                    </div>
+
+
+                    <div class="form-group">
+                        <label>Printing</label>
+
+                        <select id="printing">
+
+                            <option>Single Side</option>
+                            <option>Both Side</option>
+                            <option>Colour</option>
+                            <option>Black & White</option>
+
+                        </select>
+                    </div>
+
+
+                    <div class="form-group">
+                        <label>Finishing</label>
+
+                        <input
+                            type="text"
+                            id="finishing"
+                            placeholder="Matte Lamination"
+                        >
+                    </div>
+
+
+                    <div class="form-group">
+                        <label>Delivery Date</label>
+
+                        <input
+                            type="date"
+                            id="deliveryDate"
+                        >
+                    </div>
+
+
+                    <div class="form-group">
+                        <label>Total Amount ₹</label>
+
+                        <input
+                            type="number"
+                            id="totalAmount"
+                            placeholder="1200"
+                            min="0"
+                            required
+                        >
+                    </div>
+
+
+                    <div class="form-group">
+                        <label>Advance ₹</label>
+
+                        <input
+                            type="number"
+                            id="advanceAmount"
+                            value="0"
+                            min="0"
+                        >
+                    </div>
+
+
+                    <div class="form-group">
+                        <label>Status</label>
+
+                        <select id="orderStatus">
+
+                            <option>New</option>
+                            <option>Designing</option>
+                            <option>Customer Approval</option>
+                            <option>Printing</option>
+                            <option>Quality Check</option>
+                            <option>Ready</option>
+                            <option>Delivered</option>
+
+                        </select>
+                    </div>
+
+                </div>
+
+
+                <div class="form-group full">
+
+                    <label>Notes</label>
+
+                    <textarea
+                        id="notes"
+                        rows="4"
+                        placeholder="Special instructions..."
+                    ></textarea>
+
+                </div>
+
+
+                <div class="form-buttons">
+
+                    <button
+                        type="button"
+                        class="cancel-btn"
+                        onclick="showPage('dashboard')"
+                    >
+                        Cancel
+                    </button>
+
+                    <button
+                        type="submit"
+                        class="save-btn"
+                    >
+                        Save Order
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </section>
+
+
+    <!-- ORDERS -->
+
+    <section id="orders" class="page">
+
+        <div class="card">
+
+            <div class="search-area">
+
+                <input
+                    type="text"
+                    id="searchOrder"
+                    placeholder="🔍 Search order, customer, product..."
+                    onkeyup="displayOrders()"
+                >
+
+                <select
+                    id="filterStatus"
+                    onchange="displayOrders()"
+                >
+                    <option value="">All Status</option>
+                    <option>New</option>
+                    <option>Designing</option>
+                    <option>Customer Approval</option>
+                    <option>Printing</option>
+                    <option>Quality Check</option>
+                    <option>Ready</option>
+                    <option>Delivered</option>
+                </select>
+
+            </div>
+
+
+            <div id="ordersList">
+
+                <div class="empty">
+                    No orders found.
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- CUSTOMERS -->
+
+    <section id="customers" class="page">
+
+        <div class="card">
+
+            <div class="card-header">
+
+                <div>
+                    <h2>Customers</h2>
+                    <p>Your saved customers</p>
+                </div>
+
+            </div>
+
+            <div id="customerList">
+
+                <div class="empty">
+                    No customers yet.
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+</main>
+
+
+<!-- ORDER DETAILS POPUP -->
+
+<div id="orderModal" class="modal">
+
+    <div class="modal-box">
+
+        <button
+            class="close-btn"
+            onclick="closeModal()"
+        >
+            ×
+        </button>
+
+        <div id="orderDetails"></div>
+
+    </div>
+
+</div>
+
+
+<script src="app.js"></script>
+
+</body>
+</html>
