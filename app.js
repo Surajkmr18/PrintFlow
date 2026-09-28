@@ -1360,9 +1360,9 @@ function openInvoice(orderID) {
 
                         Printing & Design Services<br>
 
-                        Your Address, City<br>
+                        Greater noida,uttar pradesh<br>
 
-                        Mobile: +91 XXXXX XXXXX
+                        Mobile: +91 8092277082
 
                     </div>
 
