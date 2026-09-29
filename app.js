@@ -1,4 +1,21 @@
 
+const SUPABASE_URL = "https://nmdtgvybajzbdvvufvip.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_I4iqYfmDKTxBWNxuHM4wBg_5wG6yXlJ";
+
+const supabaseClient =
+    window.supabase &&
+    SUPABASE_URL !== "YOUR_SUPABASE_PROJECT_URL" &&
+    SUPABASE_PUBLISHABLE_KEY !== "YOUR_SUPABASE_PUBLISHABLE_KEY"
+        ? window.supabase.createClient(
+            SUPABASE_URL,
+            SUPABASE_PUBLISHABLE_KEY
+        )
+        : null;
+
+const SUPABASE_TABLE = "orders";
+
+let supabaseConnected = false;
+
 
 const STORAGE_KEY = "printing_business_orders";
 const PRODUCT_KEY = "printflow_products_v2";
@@ -58,6 +75,256 @@ function saveOrders(){
         STORAGE_KEY,
         JSON.stringify(orders)
     );
+
+}
+
+function orderToSupabase(order){
+
+    return {
+        id: order.id,
+
+        customer: order.customer || "",
+        phone: order.phone || "",
+        email: order.email || "",
+
+        product: order.product || "",
+        quantity: Number(order.quantity || 0),
+
+        size: order.size || "",
+        material: order.material || "",
+        printing: order.printing || "",
+        finishing: order.finishing || "",
+
+        delivery_date:
+            order.deliveryDate || null,
+
+        total: Number(order.total || 0),
+        advance: Number(order.advance || 0),
+        due: Number(order.due || 0),
+
+        status: order.status || "New",
+
+        payment_method:
+            order.paymentMethod || "Cash",
+
+        notes: order.notes || "",
+
+        payments:
+            Array.isArray(order.payments)
+                ? order.payments
+                : [],
+
+        created_at:
+            order.createdAt ||
+            new Date().toISOString(),
+
+        updated_at:
+            new Date().toISOString()
+    };
+
+}
+
+
+function supabaseToOrder(row){
+
+    return normalizeOrder({
+
+        id: row.id,
+
+        customer: row.customer || "",
+        phone: row.phone || "",
+        email: row.email || "",
+
+        product: row.product || "",
+        quantity: Number(row.quantity || 0),
+
+        size: row.size || "",
+        material: row.material || "",
+        printing: row.printing || "",
+        finishing: row.finishing || "",
+
+        deliveryDate:
+            row.delivery_date || "",
+
+        total: Number(row.total || 0),
+        advance: Number(row.advance || 0),
+        due: Number(row.due || 0),
+
+        status:
+            row.status || "New",
+
+        paymentMethod:
+            row.payment_method || "Cash",
+
+        notes:
+            row.notes || "",
+
+        payments:
+            Array.isArray(row.payments)
+                ? row.payments
+                : [],
+
+        createdAt:
+            row.created_at ||
+            new Date().toISOString()
+
+    });
+
+}
+
+
+/* =========================================
+   SAVE ONE ORDER TO SUPABASE
+========================================= */
+
+async function saveOrderToSupabase(order){
+
+    if(!supabaseClient)
+        return false;
+
+    try{
+
+        const row =
+            orderToSupabase(order);
+
+        const { error } =
+            await supabaseClient
+                .from(SUPABASE_TABLE)
+                .upsert(
+                    row,
+                    {
+                        onConflict:"id"
+                    }
+                );
+
+        if(error)
+            throw error;
+
+        return true;
+
+    }
+    catch(error){
+
+        console.error(
+            "Supabase save error:",
+            error
+        );
+
+        return false;
+
+    }
+
+}
+
+
+/* =========================================
+   DELETE ONE ORDER
+========================================= */
+
+async function deleteOrderFromSupabase(orderID){
+
+    if(!supabaseClient)
+        return false;
+
+    try{
+
+        const { error } =
+            await supabaseClient
+                .from(SUPABASE_TABLE)
+                .delete()
+                .eq("id", orderID);
+
+        if(error)
+            throw error;
+
+        return true;
+
+    }
+    catch(error){
+
+        console.error(
+            "Supabase delete error:",
+            error
+        );
+
+        return false;
+
+    }
+
+}
+
+
+/* =========================================
+   LOAD ORDERS FROM SUPABASE
+========================================= */
+
+async function loadOrdersFromSupabase(){
+
+    if(!supabaseClient){
+
+        console.warn(
+            "Supabase is not configured."
+        );
+
+        return;
+
+    }
+
+    try{
+
+        const { data, error } =
+            await supabaseClient
+                .from(SUPABASE_TABLE)
+                .select("*")
+                .order(
+                    "created_at",
+                    {
+                        ascending:false
+                    }
+                );
+
+        if(error)
+            throw error;
+
+
+        if(Array.isArray(data)){
+
+            orders =
+                data.map(
+                    supabaseToOrder
+                );
+
+            saveOrders();
+
+            updateDashboard();
+            displayOrders();
+            displayCustomers();
+            displayReports();
+
+        }
+
+        supabaseConnected = true;
+
+        console.log(
+            "Supabase connected. Orders loaded:",
+            orders.length
+        );
+
+    }
+    catch(error){
+
+        supabaseConnected = false;
+
+        console.error(
+            "Supabase load error:",
+            error
+        );
+
+        console.warn(
+            "Using LocalStorage data."
+        );
+
+    }
 
 }
 
@@ -490,24 +757,35 @@ document
 
                 }
 
+       orders[index] = updatedOrder;
 
-                orders[index] =
-                    updatedOrder;
+saveOrders();
 
+const cloudSaved =
+    await saveOrderToSupabase(updatedOrder);
 
-                saveOrders();
+if(cloudSaved){
 
+    alert(
+        "Order updated successfully.\n\n" +
+        "✓ LocalStorage updated\n" +
+        "✓ Supabase updated"
+    );
 
-                alert(
-                    "Order updated successfully."
-                );
+}
+else{
 
-            }
+    alert(
+        "Order updated locally, " +
+        "but Supabase update failed."
+    );
+
+}
 
 
             /* NEW ORDER */
 
-            else{
+            else {
 
                 const orderID =
                     "ORD-" +
@@ -547,30 +825,32 @@ document
 
                 };
 
+orders.unshift(newOrder);
 
-                orders.unshift(
-                    newOrder
-                );
+saveOrders();
 
+const cloudSaved =
+    await saveOrderToSupabase(newOrder);
 
-                saveOrders();
+if(cloudSaved){
 
-
-                alert(
-                    "Order successfully created!\n\nOrder ID: " +
-                    orderID
-                );
-
-            }
-
-
-            resetOrderForm();
-
-            showPage("orders");
-
-        }
+    alert(
+        "Order successfully created!\n\n" +
+        "Order ID: " +
+        orderID +
+        "\n\n✓ Saved on this computer\n✓ Saved to Supabase"
     );
 
+}
+else{
+
+    alert(
+        "Order saved locally.\n\n" +
+        "Supabase save failed.\n" +
+        "Please check your Supabase configuration."
+    );
+
+}
 
 /* =========================================
    PAYMENT PREVIEW
@@ -1401,117 +1681,94 @@ function detailItem(
 /* =========================================
    STATUS
 ========================================= */
-function updateOrderStatus(orderID) {
+function updateOrderStatus(orderID){
 
     const order =
-        orders.find(function(item) {
-            return item.id === orderID;
-        });
+        orders.find(
+            function(item){
+                return item.id === orderID;
+            }
+        );
 
-    if (!order) {
+    if(!order)
         return;
-    }
+
+
+    const statusElement =
+        document.getElementById(
+            "modalStatus"
+        );
+
+    if(!statusElement)
+        return;
+
 
     const newStatus =
-        document.getElementById("modalStatus").value;
-
-    order.status = newStatus;
-
-    /* IF ORDER IS DELIVERED,
-       PAYMENT IS CONSIDERED FULLY PAID */
-
-    if (newStatus === "Delivered") {
-        order.advance = Number(order.total || 0);
-        order.due = 0;
-    } else {
-        /* Recalculate due for other statuses */
-        order.due =
-            Number(order.total || 0) -
-            Number(order.advance || 0);
-
-        /* Prevent negative due */
-        if (order.due < 0) {
-            order.due = 0;
-        }
-    }
-
-    saveOrders();
-
-    closeModal();
-
-    updateDashboard();
-
-    displayOrders();
-}
-/* =========================================
-   DELETE
-========================================= */
-
-function deleteOrder(orderID){
-
-    if(
-        !confirm(
-            "Kya aap ye order delete karna chahte ho?"
-        )
-    )
-        return;
+        statusElement.value;
 
 
-    orders =
-        orders.filter(
-            o=>o.id!==orderID
+    order.status =
+        newStatus;
+
+
+    /*
+       IMPORTANT:
+       Delivered ka matlab payment received
+       nahi hota.
+
+       Due actual received amount ke
+       according calculate hoga.
+    */
+
+    order.advance =
+        Number(order.advance || 0);
+
+
+    order.total =
+        Number(order.total || 0);
+
+
+    order.due =
+        Math.max(
+            0,
+            order.total -
+            order.advance
         );
+
+
+    order.updatedAt =
+        new Date().toISOString();
 
 
     saveOrders();
 
-    closeModal();
 
-    updateDashboard();
+    saveOrderToSupabase(order)
+        .then(function(success){
 
-    displayOrders();
+            if(!success){
 
-}
-
-
-/* =========================================
-   MODAL
-========================================= */
-
-function closeModal(){
-
-    document
-        .getElementById(
-            "orderModal"
-        )
-        .classList.remove(
-            "show"
-        );
-
-}
-
-
-document
-    .getElementById(
-        "orderModal"
-    )
-    .addEventListener(
-        "click",
-        event=>{
-
-            if(
-                event.target.id ===
-                "orderModal"
-            ){
-
-                closeModal();
+                console.error(
+                    "Status update saved locally, " +
+                    "but Supabase update failed."
+                );
 
             }
 
-        }
-    );
+        });
 
 
+    closeModal();
+
+    updateDashboard();
+
+    displayOrders();
+
+    displayCustomers();
+
+    displayReports();
+
+}
 /* =========================================
    EDIT ORDER
 ========================================= */
@@ -3105,9 +3362,52 @@ document.addEventListener(
 /* =========================================
    INITIALIZE
 ========================================= */
-
 syncProductOptions();
 
 updateDashboard();
 
 updatePaymentPreview();
+
+loadOrdersFromSupabase();
+async function testSupabase(){
+
+    if(!supabaseClient){
+
+        console.error(
+            "Supabase client not configured."
+        );
+
+        return;
+
+    }
+
+    const { data, error } =
+        await supabaseClient
+            .from(SUPABASE_TABLE)
+            .select("id")
+            .limit(1);
+
+    if(error){
+
+        console.error(
+            "SUPABASE ERROR:",
+            error
+        );
+
+        alert(
+            "Supabase connection failed.\n\n" +
+            error.message
+        );
+
+        return;
+
+    }
+
+    console.log(
+        "SUPABASE CONNECTED:",
+        data
+    );
+
+    alert(
+        "✓ Supabase Connected Successfully"
+    );
