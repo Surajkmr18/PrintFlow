@@ -1827,6 +1827,160 @@ function displayCustomers(){
                     ${escapeHTML(
                         customer.phone
                     )}
+<<<<<<< HEAD
+=======
+                </p>
+
+
+                <p>
+                    📦 Orders:
+                    ${customer.orders}
+                </p>
+
+
+                <p>
+                    💰 Total:
+                    ${money(
+                        customer.total
+                    )}
+                </p>
+
+
+                <p>
+                    🔴 Due:
+                    ${money(
+                        customer.due
+                    )}
+                </p>
+
+            </div>
+
+        `).join("");
+}
+
+
+/* =========================================================
+   INVOICE
+========================================================= */
+
+function openInvoice(orderID) {
+
+    const order =
+        orders.find(item =>
+            item.order_id === orderID
+        );
+
+
+    if (!order) {
+        return;
+    }
+
+
+    currentInvoiceOrder =
+        order;
+
+
+    const invoice =
+        document.getElementById(
+            "invoiceContent"
+        );
+
+
+    invoice.innerHTML = `
+
+        <div class="invoice">
+
+            <div class="invoice-top">
+
+                <div>
+
+                    <div class="business-name">
+                        Your Printing Business
+                    </div>
+
+
+                    <div class="business-info">
+
+                        Printing & Design Services<br>
+
+                        Greater noida,uttar pradesh<br>
+
+                        Mobile: +91 8092277082
+
+                    </div>
+
+                </div>
+
+
+                <div class="invoice-title">
+
+                    <h1>INVOICE</h1>
+
+
+                    <p>
+                        Invoice:
+                        ${escapeHTML(
+                            order.order_id
+                        )}
+                    </p>
+
+
+                    <p>
+                        Date:
+                        ${
+                            order.created_at
+                            ?
+                            new Date(
+                                order.created_at
+                            ).toLocaleDateString(
+                                "en-IN"
+                            )
+                            :
+                            "-"
+                        }
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <div class="invoice-customer">
+
+                <div>
+
+                    <h4>BILL TO</h4>
+
+                    <p>
+
+                        <strong>
+                            ${escapeHTML(
+                                order.customer
+                            )}
+                        </strong>
+
+                        <br>
+
+                        ${escapeHTML(
+                            order.phone
+                        )}
+
+                    </p>
+
+                </div>
+
+
+                <div>
+
+                    <h4>ORDER STATUS</h4>
+
+                    <p>
+                        ${escapeHTML(
+                            order.status
+                        )}
+                    </p>
+
+>>>>>>> a54529a23678238ec7bc86b2a1455cfad7960568
 
                     ${
                         customer.email
