@@ -1401,24 +1401,39 @@ function detailItem(
 /* =========================================
    STATUS
 ========================================= */
-
-function updateOrderStatus(orderID){
+function updateOrderStatus(orderID) {
 
     const order =
-        orders.find(
-            x=>x.id===orderID
-        );
+        orders.find(function(item) {
+            return item.id === orderID;
+        });
 
-
-    if(!order)
+    if (!order) {
         return;
+    }
 
+    const newStatus =
+        document.getElementById("modalStatus").value;
 
-    order.status =
-        document.getElementById(
-            "modalStatus"
-        ).value;
+    order.status = newStatus;
 
+    /* IF ORDER IS DELIVERED,
+       PAYMENT IS CONSIDERED FULLY PAID */
+
+    if (newStatus === "Delivered") {
+        order.advance = Number(order.total || 0);
+        order.due = 0;
+    } else {
+        /* Recalculate due for other statuses */
+        order.due =
+            Number(order.total || 0) -
+            Number(order.advance || 0);
+
+        /* Prevent negative due */
+        if (order.due < 0) {
+            order.due = 0;
+        }
+    }
 
     saveOrders();
 
@@ -1427,10 +1442,7 @@ function updateOrderStatus(orderID){
     updateDashboard();
 
     displayOrders();
-
 }
-
-
 /* =========================================
    DELETE
 ========================================= */
