@@ -4,14 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<<<<<<< HEAD
     <meta name="theme-color" content="#111318">
     <title>PrintFlow 2.0 - Printing Business</title>
-=======
-
-    <title>Skprint - Printing Business</title>
-
->>>>>>> a54529a23678238ec7bc86b2a1455cfad7960568
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -25,7 +19,6 @@
         </div>
     </div>
 
-<<<<<<< HEAD
     <nav>
         <button class="nav-btn active" onclick="showPage('dashboard')">🏠 <span>Dashboard</span></button>
         <button class="nav-btn" onclick="showPage('newOrder')">➕ <span>New Order</span></button>
@@ -115,15 +108,6 @@
 
             <div id="recentOrders" class="empty">
                 No orders yet.
-=======
-    <!-- SIDEBAR -->
-    <aside class="sidebar">
-        <div class="logo">
-            <div class="logo-icon">P</div>
-            <div>
-                <h2>Skprint</h2>
-                <span>Printing Business</span>
->>>>>>> a54529a23678238ec7bc86b2a1455cfad7960568
             </div>
         </div>
 
@@ -136,225 +120,8 @@
                 </div>
             </div>
 
-<<<<<<< HEAD
             <div id="upcomingDeliveries" class="empty">
                 No upcoming deliveries.
-=======
-
-            <div class="section-card">
-
-                <form id="orderForm">
-
-                    <h3 class="form-heading">Customer Details</h3>
-
-                    <div class="form-grid">
-
-                        <div class="form-group">
-                            <label>Customer Name *</label>
-                            <input
-                                type="text"
-                                id="customerName"
-                                placeholder="Enter customer name"
-                                required
-                            >
-                        </div>
-
-                        <div class="form-group">
-                            <label>Mobile Number *</label>
-                            <input
-                                type="tel"
-                                id="customerPhone"
-                                placeholder="1234567890"
-                            inputmode="numeric" Total="10" pattern="[0-9]*" maxlength="10"
-                                required
-                            >
-                        </div>
-
-                    </div>
-
-
-                    <h3 class="form-heading">Order Details</h3>
-
-                    <div class="form-grid">
-
-                        <div class="form-group">
-                            <label>Product *</label>
-
-                            <select id="product" required>
-                                <option value="">Select Product</option>
-                                <option>Visiting Card</option>
-                                <option>Business Card</option>
-                                <option>Banner</option>
-                                <option>Flex</option>
-                                <option>Poster</option>
-                                <option>Flyer</option>
-                                <option>Brochure</option>
-                                <option>Sticker</option>
-                                <option>Invitation Card</option>
-                                <option>Letterhead</option>
-                                <option>Bill Book</option>
-                                <option>Other</option>
-                            </select>
-                        </div>
-
-
-                        <div class="form-group">
-                            <label>Quantity *</label>
-
-                            <input
-                                type="number"
-                                id="quantity"
-                                min="1"
-                                value="1"
-                                required
-                            >
-                        </div>
-
-
-                        <div class="form-group">
-                            <label>Size</label>
-
-                            <input
-                                type="text"
-                                id="size"
-                                placeholder="A4 / 3x6 ft / Custom"
-                            >
-                        </div>
-
-
-                        <div class="form-group">
-                            <label>Material</label>
-
-                            <input
-                                type="text"
-                                id="material"
-                                placeholder="300 GSM / Vinyl / Paper"
-                            >
-                        </div>
-
-
-                        <div class="form-group">
-                            <label>Printing</label>
-
-                            <select id="printing">
-                                <option>Digital Printing</option>
-                                <option>Offset Printing</option>
-                                <option>Large Format</option>
-                                <option>Screen Printing</option>
-                                <option>UV Printing</option>
-                                <option>Other</option>
-                            </select>
-                        </div>
-
-
-                        <div class="form-group">
-                            <label>Finishing</label>
-
-                            <input
-                                type="text"
-                                id="finishing"
-                                placeholder="Lamination / Cutting"
-                            >
-                        </div>
-
-
-                        <div class="form-group">
-                            <label>Delivery Date</label>
-
-                            <input
-                                type="date"
-                                id="deliveryDate"
-                            >
-                        </div>
-
-
-                        <div class="form-group">
-                            <label>Status</label>
-
-                            <select id="orderStatus">
-                                <option value="Pending">Pending</option>
-                                <option value="In Progress">In Progress</option>
-                                <option value="Ready">Ready</option>
-                                <option value="Delivered">Delivered</option>
-                                <option value="Cancelled">Cancelled</option>
-                            </select>
-                        </div>
-
-                    </div>
-
-
-                    <h3 class="form-heading">Payment</h3>
-
-                    <div class="form-grid">
-
-                        <div class="form-group">
-                            <label>Total Amount ₹ *</label>
-
-                            <input
-                                type="number"
-                                id="totalAmount"
-                                min="0"
-                                step="0.01"
-                                placeholder="0"
-                                required
-                            >
-                        </div>
-
-
-                        <div class="form-group">
-                            <label>Advance Paid ₹</label>
-
-                            <input
-                                type="number"
-                                id="advanceAmount"
-                                min="0"
-                                step="0.01"
-                                value="0"
-                            >
-                        </div>
-
-                    </div>
-
-
-                    <div class="due-preview">
-                        <span>Amount Due</span>
-                        <strong id="duePreview">₹0</strong>
-                    </div>
-
-
-                    <div class="form-group full">
-                        <label>Notes</label>
-
-                        <textarea
-                            id="notes"
-                            rows="4"
-                            placeholder="Special instructions..."
-                        ></textarea>
-                    </div>
-
-
-                    <div class="form-actions">
-
-                        <button
-                            type="button"
-                            class="secondary-btn"
-                            onclick="resetOrderForm()"
-                        >
-                            Clear
-                        </button>
-
-                        <button
-                            type="submit"
-                            class="primary-btn"
-                        >
-                            Save Order
-                        </button>
-
-                    </div>
-
-                </form>
-
->>>>>>> a54529a23678238ec7bc86b2a1455cfad7960568
             </div>
 
         </div>
@@ -947,21 +714,8 @@ onclick="closeModal()">
 
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<script>
-    const SUPABASE_URL = "https://nmdtgvybajzbdvvufvip.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_I4iqYfmDKTxBWNxuHM4wBg_5wG6yXlJ ";
-
-    const supabaseClient = window.supabase.createClient(
-        SUPABASE_URL,
-        SUPABASE_ANON_KEY
-    );
-</script>
-
 
 <script src="app.js"></script>
 
 </body>
 </html>
-```
