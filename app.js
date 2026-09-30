@@ -546,311 +546,458 @@ function showPage(pageName){
    CREATE / EDIT ORDER
 ========================================= */
 
-document
-    .getElementById("orderForm")
-    .addEventListener(
-        "submit",
-        function(event){
+    getElementById("orderForm")
+    .addEventListener("submit", async function(event) {
 
-            event.preventDefault();
+        event.preventDefault();
+
+        // ============================================
+        // GET FORM VALUES
+        // ============================================
+
+        const id =
+            document.getElementById("editingOrderId").value.trim();
+
+        const customer =
+            document.getElementById("customerName").value.trim();
+
+        const phone =
+            document.getElementById("customerPhone").value.trim();
+
+        const total =
+            Number(
+                document.getElementById("totalAmount").value || 0
+            );
+
+        const received =
+            Number(
+                document.getElementById("advanceAmount").value || 0
+            );
 
 
-            const id =
-                document.getElementById(
-                    "editingOrderId"
-                ).value;
+        // ============================================
+        // VALIDATION
+        // ============================================
+
+        if (
+            !customer ||
+            !phone ||
+            total < 0 ||
+            received < 0
+        ) {
+
+            alert(
+                "Please enter valid customer and billing details."
+            );
+
+            return;
+        }
 
 
-            const customer =
-                document.getElementById(
-                    "customerName"
-                ).value.trim();
+        if (received > total) {
+
+            alert(
+                "Advance / received amount total amount se zyada nahi ho sakta."
+            );
+
+            return;
+        }
 
 
-            const phone =
-                document.getElementById(
-                    "customerPhone"
-                ).value.trim();
+        // ============================================
+        // COMMON ORDER DATA
+        // ============================================
 
+        const common = {
 
-            const total =
+            customer: customer,
+
+            phone: phone,
+
+            email:
+                document
+                    .getElementById("customerEmail")
+                    .value
+                    .trim(),
+
+            product:
+                document
+                    .getElementById("product")
+                    .value,
+
+            quantity:
                 Number(
-                    document.getElementById(
-                        "totalAmount"
-                    ).value || 0
+                    document
+                        .getElementById("quantity")
+                        .value || 0
+                ),
+
+            size:
+                document
+                    .getElementById("size")
+                    .value
+                    .trim(),
+
+            material:
+                document
+                    .getElementById("material")
+                    .value
+                    .trim(),
+
+            printing:
+                document
+                    .getElementById("printing")
+                    .value,
+
+            finishing:
+                document
+                    .getElementById("finishing")
+                    .value
+                    .trim(),
+
+            deliveryDate:
+                document
+                    .getElementById("deliveryDate")
+                    .value,
+
+            total: total,
+
+            advance: received,
+
+            due:
+                Math.max(
+                    0,
+                    total - received
+                ),
+
+            status:
+                document
+                    .getElementById("orderStatus")
+                    .value,
+
+            paymentMethod:
+                document
+                    .getElementById("paymentMethod")
+                    .value,
+
+            notes:
+                document
+                    .getElementById("notes")
+                    .value
+                    .trim()
+
+        };
+
+
+        // ============================================
+        // EDIT EXISTING ORDER
+        // ============================================
+
+        if (id) {
+
+            const index =
+                orders.findIndex(
+                    order => order.id === id
                 );
 
 
-            const received =
-                Number(
-                    document.getElementById(
-                        "advanceAmount"
-                    ).value || 0
-                );
-
-
-            if(
-                !customer ||
-                !phone ||
-                total < 0 ||
-                received < 0
-            ){
+            if (index === -1) {
 
                 alert(
-                    "Please enter valid customer and billing details."
+                    "Order not found."
                 );
 
                 return;
-
             }
 
 
-            if(received > total){
+            const oldOrder =
+                orders[index];
 
-                alert(
-                    "Advance / received amount total amount se zyada nahi ho sakta."
+
+            const oldReceived =
+                Number(
+                    oldOrder.advance || 0
                 );
 
-                return;
 
-            }
+            // Create updated order//
+            const updatedOrder = {
 
+                ...oldOrder,
 
-            const common = {
+                ...common,
 
-                customer,
+                id: oldOrder.id,
 
-                phone,
-
-                email:
-                    document.getElementById(
-                        "customerEmail"
-                    ).value.trim(),
-
-                product:
-                    document.getElementById(
-                        "product"
-                    ).value,
-
-                quantity:
-                    Number(
-                        document.getElementById(
-                            "quantity"
-                        ).value || 0
-                    ),
-
-                size:
-                    document.getElementById(
-                        "size"
-                    ).value.trim(),
-
-                material:
-                    document.getElementById(
-                        "material"
-                    ).value.trim(),
-
-                printing:
-                    document.getElementById(
-                        "printing"
-                    ).value,
-
-                finishing:
-                    document.getElementById(
-                        "finishing"
-                    ).value.trim(),
-
-                deliveryDate:
-                    document.getElementById(
-                        "deliveryDate"
-                    ).value,
-
-                total,
-
-                advance:received,
-
-                due:
-                    Math.max(
-                        0,
-                        total - received
-                    ),
-
-                status:
-                    document.getElementById(
-                        "orderStatus"
-                    ).value,
-
-                paymentMethod:
-                    document.getElementById(
-                        "paymentMethod"
-                    ).value,
-
-                notes:
-                    document.getElementById(
-                        "notes"
-                    ).value.trim()
+                createdAt:
+                    oldOrder.createdAt ||
+                    new Date().toISOString()
 
             };
 
 
-            /* EDIT */
+            // ========================================
+            // PRESERVE PAYMENT HISTORY
+            // ========================================
 
-            if(id){
+            updatedOrder.payments =
+                Array.isArray(
+                    oldOrder.payments
+                )
+                ? [...oldOrder.payments]
+                : [];
 
-                const index =
-                    orders.findIndex(
-                        o=>o.id===id
+
+            // ========================================
+            // PAYMENT CHANGE
+            // ========================================
+
+            if (
+                received !==
+                oldReceived
+            ) {
+
+                const paymentDifference =
+                    received - oldReceived;
+
+
+                updatedOrder.payments.push({
+
+                    amount:
+                        paymentDifference,
+
+                    method:
+                        common.paymentMethod,
+
+                    date:
+                        new Date().toISOString(),
+
+                    note:
+                        "Payment adjustment"
+
+                });
+
+            }
+
+
+            // ========================================
+            // UPDATE LOCAL STORAGE
+            // ========================================
+
+            orders[index] =
+                updatedOrder;
+
+
+            saveOrders();
+
+
+            // ========================================
+            // UPDATE SUPABASE
+            // ========================================
+
+            let cloudSaved = false;
+
+            try {
+
+                cloudSaved =
+                    await saveOrderToSupabase(
+                        updatedOrder
                     );
 
+            }
+            catch (error) {
 
-                if(index===-1)
-                    return;
+                console.error(
+                    "Supabase update error:",
+                    error
+                );
 
+                cloudSaved = false;
 
-                const oldOrder =
-                    orders[index];
-
-
-                const oldReceived =
-                    Number(
-                        oldOrder.advance || 0
-                    );
+            }
 
 
-                const updatedOrder = {
+            // ========================================
+            // RESULT
+            // ========================================
 
-                    ...oldOrder,
+            if (cloudSaved) {
 
-                    ...common
+                alert(
+                    "Order updated successfully.\n\n" +
+                    "✓ LocalStorage updated\n" +
+                    "✓ Supabase updated"
+                );
 
-                };
+            }
+            else {
+
+                alert(
+                    "Order updated locally.\n\n" +
+                    "⚠ Supabase update failed.\n\n" +
+                    "Please check your Supabase configuration."
+                );
+
+            }
 
 
-                updatedOrder.payments =
-                    Array.isArray(
-                        oldOrder.payments
-                    )
-                    ? oldOrder.payments
-                    : [];
+            // ========================================
+            // RESET FORM
+            // ========================================
+
+            if (typeof cancelEdit === "function") {
+
+                cancelEdit();
+
+            }
+            else {
+
+                document
+                    .getElementById("orderForm")
+                    .reset();
+
+            }
 
 
-                if(
-                    received !==
-                    oldReceived
-                ){
+            return;
+        }
 
-                    updatedOrder.payments.push({
+
+        // ============================================
+        // CREATE NEW ORDER
+        // ============================================
+
+        const orderID =
+            "ORD-" +
+            Date.now()
+                .toString()
+                .slice(-6);
+
+
+        const now =
+            new Date().toISOString();
+
+
+        const newOrder = {
+
+            id: orderID,
+
+            ...common,
+
+            createdAt: now,
+
+            payments:
+                received > 0
+                ?
+                [
+                    {
 
                         amount:
-                            received -
-                            oldReceived,
+                            received,
 
                         method:
                             common.paymentMethod,
 
                         date:
-                            new Date().toISOString(),
+                            now,
 
                         note:
-                            "Payment adjustment"
+                            "Initial payment"
 
-                    });
+                    }
+                ]
+                :
+                []
 
-                }
-
-       orders[index] = updatedOrder;
-
-saveOrders();
-
-const cloudSaved =
-    await saveOrderToSupabase(updatedOrder);
-
-if(cloudSaved){
-
-    alert(
-        "Order updated successfully.\n\n" +
-        "✓ LocalStorage updated\n" +
-        "✓ Supabase updated"
-    );
-
-}
-else{
-
-    alert(
-        "Order updated locally, " +
-        "but Supabase update failed."
-    );
-
-}
+        };
 
 
-            /* NEW ORDER */
+        // ============================================
+        // SAVE LOCALLY
+        // ============================================
 
-            else {
-
-                const orderID =
-                    "ORD-" +
-                    Date.now()
-                        .toString()
-                        .slice(-6);
+        orders.unshift(
+            newOrder
+        );
 
 
-                const newOrder = {
+        saveOrders();
 
-                    id:orderID,
 
-                    ...common,
+        // ============================================
+        // SAVE TO SUPABASE
+        // ============================================
 
-                    createdAt:
-                        new Date().toISOString(),
+        let cloudSaved = false;
 
-                    payments:
-                        received > 0
-                        ?
-                        [
-                            {
-                                amount:received,
 
-                                method:
-                                    common.paymentMethod,
+        try {
 
-                                date:
-                                    new Date().toISOString(),
+            cloudSaved =
+                await saveOrderToSupabase(
+                    newOrder
+                );
 
-                                note:
-                                    "Initial payment"
-                            }
-                        ]
-                        :
-                        []
+        }
+        catch (error) {
 
-                };
+            console.error(
+                "Supabase save error:",
+                error
+            );
 
-orders.unshift(newOrder);
+            cloudSaved = false;
 
-saveOrders();
+        }
 
-const cloudSaved =
-    await saveOrderToSupabase(newOrder);
 
-if(cloudSaved){
+        // ============================================
+        // RESULT
+        // ============================================
 
-    alert(
-        "Order successfully created!\n\n" +
-        "Order ID: " +
-        orderID +
-        "\n\n✓ Saved on this computer\n✓ Saved to Supabase"
-    );
+        if (cloudSaved) {
 
-}
-else{
+            alert(
+                "Order successfully created!\n\n" +
+                "Order ID: " +
+                orderID +
+                "\n\n" +
+                "✓ Saved on this computer\n" +
+                "✓ Saved to Supabase"
+            );
 
-    alert(
-        "Order saved locally.\n\n" +
-        "Supabase save failed.\n" +
-        "Please check your Supabase configuration."
-    );
+        }
+        else {
 
-}
+            alert(
+                "Order saved locally.\n\n" +
+                "⚠ Supabase save failed.\n\n" +
+                "Please check your Supabase configuration."
+            );
+
+        }
+
+
+        // ============================================
+        // RESET FORM
+        // ============================================
+
+        if (typeof cancelEdit === "function") {
+
+            cancelEdit();
+
+        }
+        else {
+
+            document
+                .getElementById("orderForm")
+                .reset();
+
+        }
+
+    });
+
 
 /* =========================================
    PAYMENT PREVIEW
@@ -3369,7 +3516,7 @@ updateDashboard();
 updatePaymentPreview();
 
 loadOrdersFromSupabase();
-async function testSupabase(){
+async function testSupabase(){}
 
     if(!supabaseClient){
 
@@ -3409,5 +3556,4 @@ async function testSupabase(){
     );
 
     alert(
-        "✓ Supabase Connected Successfully"
-    );
+        "✓ Supabase Connected Successfully");
