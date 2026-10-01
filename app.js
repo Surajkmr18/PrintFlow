@@ -318,6 +318,7 @@ function supabaseToOrder(row){
         customer: row.customer || "",
         phone: row.phone || "",
         email: row.email || "",
+        address: normalized.address || "",
 
         product: row.product || "",
         quantity: Number(row.quantity || 0),
@@ -2020,13 +2021,14 @@ async function updateOrderStatus(orderID){
     order.advance =
         Number(order.advance || 0);
 
-
-    order.due =
-        Math.max(
-            0,
-            order.total - order.advance
-        );
-
+if (newStatus === "Delivered") {
+    order.due = 0;
+} else {
+    order.due = Math.max(
+        0,
+        order.total - order.advance
+    );
+}
 
     order.updatedAt =
         nowISO();
@@ -2130,7 +2132,11 @@ function editOrder(orderID){
         "customerEmail"
     ).value =
         order.email || "";
-
+        address:
+    document
+        .getElementById("customerAddress")
+        .value
+        .trim(),
 
     document.getElementById(
         "product"
@@ -2286,32 +2292,12 @@ async function deleteOrder(orderID){
 
     closeModal();
 
-
-    /*
-       SUPABASE DELETE
-    */
-
-    const cloudDeleted =
-        await deleteOrderFromSupabase(
-            orderID
-        );
-
-
-    if(cloudDeleted){
-
-        alert(
-            "Order deleted successfully.\n\n" +
-            "✓ Deleted locally\n" +
-            "✓ Deleted from Supabase"
-        );
-
-    }else{
-
-        alert(
-            "Order deleted locally.\n\n" +
-            "⚠ Supabase delete failed."
-        );
-    }
+alert(
+    "Order deleted successfully.\n\n" +
+    "✓ Deleted from LocalStorage\n" +
+    "✓ Supabase order is safe"
+);
+    
 }
 
 
@@ -2368,16 +2354,17 @@ function displayCustomers(){
         if(!map.has(key)){
 
             map.set(
-                key,
-                {
-                    name:order.customer,
-                    phone:order.phone,
-                    email:order.email || "",
-                    orders:0,
-                    total:0,
-                    due:0
-                }
-            );
+    key,
+    {
+        name:order.customer,
+        phone:order.phone,
+        email:order.email || "",
+        address:order.address || "",
+        orders:0,
+        total:0,
+        due:0
+    }
+);
         }
 
 
@@ -2452,10 +2439,14 @@ function displayCustomers(){
                             escapeHTML(customer.email)
                             :
                             ""
-                        }
-
-                    </span>
-
+                        }   
+                        ${
+    customer.address
+    ?
+    `<br>${escapeHTML(customer.address)}`
+    :
+    ""
+} 
 
                     <div class="customer-actions">
 
@@ -3374,9 +3365,10 @@ function sendCustomerWhatsApp(
     );
 }
 
-
 /* =========================================================
-   PRINT INVOICE
+   PRINT GST TAX INVOICE
+   Reference Style:
+   Professional A4 GST Invoice
 ========================================================= */
 
 function printInvoice(orderID){
@@ -3388,324 +3380,1743 @@ function printInvoice(orderID){
         return;
     }
 
+
     /* =====================================================
-       TAX INVOICE SETTINGS
-       GSTIN / bank / UPI can be stored in settings later.
-       Safe defaults keep old PrintFlow orders working.
+       BUSINESS SETTINGS
     ===================================================== */
 
-    const businessName = settings.businessName || "PrintFlow Printing Business";
-    const businessAddress = settings.businessAddress || "";
-    const businessPhone = settings.businessPhone || "";
-    const businessEmail = settings.businessEmail || "";
-    const businessGSTIN = settings.businessGSTIN || "";
-    const businessState = settings.businessState || "Uttar Pradesh";
-    const businessStateCode = settings.businessStateCode || "09";
-    const placeOfSupply = settings.placeOfSupply || businessState;
-    const terms = settings.invoiceTerms || "Net 15";
-    const subject = settings.invoiceSubject || "Digital Prints";
-    const bankName = settings.bankName || "";
-    const bankAccount = settings.bankAccount || "";
-    const bankIFSC = settings.bankIFSC || "";
-    const bankBranch = settings.bankBranch || "";
-    const upiId = settings.upiId || "";
+    const businessName =
+        settings.businessName ||
+        "PrintFlow Printing Business";
 
-    /*
-       Existing PrintFlow stores one order total.
-       We treat that value as the FINAL invoice total,
-       inclusive of GST, so the invoice never changes the
-       amount already saved in the order.
+    const businessAddress =
+        settings.businessAddress || "";
 
-       Default GST = 18% (CGST 9% + SGST 9%).
-       Change settings.cgstRate / settings.sgstRate if required.
-    */
-    const cgstRate = Number(settings.cgstRate ?? 9);
-    const sgstRate = Number(settings.sgstRate ?? 9);
-    const totalGSTRate = cgstRate + sgstRate;
-    const grandTotal = Number(order.total || 0);
+    const businessPhone =
+        settings.businessPhone || "";
 
-    const taxableValue = totalGSTRate > 0
-        ? grandTotal / (1 + totalGSTRate / 100)
-        : grandTotal;
+    const businessEmail =
+        settings.businessEmail || "";
 
-    const cgstAmount = taxableValue * cgstRate / 100;
-    const sgstAmount = taxableValue * sgstRate / 100;
-    const subTotal = taxableValue;
+    const businessGSTIN =
+        settings.businessGSTIN || "";
+
+    const businessState =
+        settings.businessState ||
+        "Uttar Pradesh";
+
+    const businessStateCode =
+        settings.businessStateCode ||
+        "09";
+
+    const placeOfSupply =
+        settings.placeOfSupply ||
+        businessState;
+
+    const terms =
+        settings.invoiceTerms ||
+        "Net 15";
+
+    const subject =
+        settings.invoiceSubject ||
+        "Digital Prints";
+
+
+    /* =====================================================
+       BANK
+    ===================================================== */
+
+    const bankName =
+        settings.bankName || "";
+
+    const bankAccount =
+        settings.bankAccount || "";
+
+    const bankIFSC =
+        settings.bankIFSC || "";
+
+    const bankBranch =
+        settings.bankBranch || "";
+
+    const upiId =
+        settings.upiId || "";
+
+
+    /* =====================================================
+       GST
+
+       order.total = GST BEFORE amount
+
+       Example:
+       ₹5,000
+       CGST 9% = ₹450
+       SGST 9% = ₹450
+       Grand = ₹5,900
+    ===================================================== */
+
+    const cgstRate =
+        Number(settings.cgstRate ?? 9);
+
+    const sgstRate =
+        Number(settings.sgstRate ?? 9);
+
+    const subTotal =
+        Number(order.total || 0);
+
+    const cgstAmount =
+        subTotal * cgstRate / 100;
+
+    const sgstAmount =
+        subTotal * sgstRate / 100;
+
+    const grandTotal =
+        subTotal +
+        cgstAmount +
+        sgstAmount;
+
+
+    /* =====================================================
+       INVOICE DETAILS
+    ===================================================== */
 
     const invoiceNo =
         settings.invoicePrefix
-        ? `${settings.invoicePrefix}-${order.id}`
-        : order.id;
+            ? `${settings.invoicePrefix}-${order.id}`
+            : order.id;
 
     const invoiceDate =
-        dateLabel(order.invoiceDate || order.createdAt || todayISO());
+        dateLabel(
+            order.invoiceDate ||
+            order.createdAt ||
+            todayISO()
+        );
 
-    const dueDate = order.deliveryDate
-        ? dateLabel(order.deliveryDate)
-        : dateLabel(todayISO());
+    const dueDate =
+        order.deliveryDate
+            ? dateLabel(order.deliveryDate)
+            : dateLabel(todayISO());
+
+
+    /* =====================================================
+       CUSTOMER
+    ===================================================== */
+
+    const customerName =
+        order.customer ||
+        order.customerName ||
+        "Customer";
+
+    const customerPhone =
+        order.phone ||
+        order.customerPhone ||
+        "";
+
+    const customerEmail =
+        order.email ||
+        order.customerEmail ||
+        "";
+
+    const customerGSTIN =
+        order.gstin ||
+        order.customerGSTIN ||
+        "";
+
+    const customerAddress =
+        order.address ||
+        order.customerAddress ||
+        "";
+
+
+    /* =====================================================
+       SHIPPING
+
+       IMPORTANT:
+       Ship To address is independent from Bill To.
+    ===================================================== */
+
+    const shippingAddress =
+        order.shippingAddress ||
+        order.shipToAddress ||
+        order.deliveryAddress ||
+        "";
+
+    const shippingPhone =
+        order.shippingPhone ||
+        order.shipToPhone ||
+        "";
+
+
+    /* =====================================================
+       PRODUCT
+    ===================================================== */
+
+    const qty =
+        Number(order.quantity || 0);
+
+    const rate =
+        qty > 0
+            ? subTotal / qty
+            : subTotal;
 
     const descriptionParts = [
+
         order.product,
-        order.size ? `Size: ${order.size}` : "",
-        order.material ? `Material: ${order.material}` : "",
-        order.printing ? `Printing: ${order.printing}` : "",
-        order.finishing ? `Finishing: ${order.finishing}` : "",
-        order.notes ? `Notes: ${order.notes}` : ""
+
+        order.size
+            ? `Size: ${order.size}`
+            : "",
+
+        order.material
+            ? `Material: ${order.material}`
+            : "",
+
+        order.printing
+            ? `Printing: ${order.printing}`
+            : "",
+
+        order.finishing
+            ? `Finishing: ${order.finishing}`
+            : "",
+
+        order.hsn
+            ? `HSN: ${order.hsn}`
+            : "",
+
+        order.notes
+            ? `Notes: ${order.notes}`
+            : ""
+
     ].filter(Boolean);
 
-    const description = descriptionParts.join("\n");
-    const qty = Number(order.quantity || 0);
-    const rate = qty > 0 ? subTotal / qty : subTotal;
-    const amountWords = numberToIndianWords(grandTotal);
+    const description =
+        descriptionParts.join("\n");
 
-    const customerName = order.customer || "Customer";
-    const customerPhone = order.phone || "";
-    const customerEmail = order.email || "";
-    const customerGSTIN = order.gstin || order.customerGSTIN || "";
-    const customerAddress = order.address || order.customerAddress || "";
+
+    /* =====================================================
+       TOTAL WORDS
+    ===================================================== */
+
+    const amountWords =
+        numberToIndianWords(grandTotal);
+
+
+    /* =====================================================
+       UPI QR
+    ===================================================== */
 
     const qrData = upiId
         ? `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(businessName)}&am=${grandTotal.toFixed(2)}&cu=INR`
         : "";
 
     const qrHtml = qrData
-        ? `<div class="qr-wrap">
-                <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrData)}" alt="UPI QR">
-                <div>Scan to Pay</div>
-           </div>`
-        : `<div class="qr-placeholder">UPI QR<br><small>Add UPI ID in Settings</small></div>`;
 
-    const win = window.open("", "_blank", "width=1000,height=1000");
+        ? `
+            <img
+                src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(qrData)}"
+                class="upi-qr"
+                alt="UPI QR"
+            >
+
+            <div class="scan-text">
+                Scan to Pay
+            </div>
+          `
+
+        : `
+            <div class="qr-placeholder">
+                UPI QR
+                <br>
+                <small>Add UPI ID in Settings</small>
+            </div>
+          `;
+
+
+    /* =====================================================
+       WINDOW
+    ===================================================== */
+
+    const win =
+        window.open(
+            "",
+            "_blank",
+            "width=1000,height=1000"
+        );
 
     if(!win){
-        alert("Please allow popups to print the invoice.");
+
+        alert(
+            "Please allow popups to print the invoice."
+        );
+
         return;
     }
 
+
+    /* =====================================================
+       HTML
+    ===================================================== */
+
     win.document.open();
-    win.document.write(`<!DOCTYPE html>
+
+    win.document.write(`
+
+<!DOCTYPE html>
+
 <html lang="en">
+
 <head>
+
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tax Invoice - ${escapeHTML(invoiceNo)}</title>
+
+<meta
+    name="viewport"
+    content="width=device-width,initial-scale=1.0"
+>
+
+<title>
+    Tax Invoice - ${escapeHTML(invoiceNo)}
+</title>
+
+
 <style>
-    @page{size:A4 portrait;margin:8mm}
-    *{box-sizing:border-box}
-    html,body{margin:0;padding:0;background:#fff;color:#111;font-family:Arial,Helvetica,sans-serif}
-    body{font-size:10.5px}
-    .invoice{width:194mm;min-height:280mm;margin:0 auto;border:1px solid #222;background:#fff}
-    .row{display:flex}
-    .cell{border-right:1px solid #222;border-bottom:1px solid #222;padding:6px 7px}
-    .cell:last-child{border-right:0}
-    .no-border{border:0!important}
 
-    .header{min-height:26mm;display:flex;border-bottom:1px solid #222}
-    .company{flex:1;padding:8px 9px}
-    .company-name{font-size:18px;font-weight:700;margin-bottom:5px}
-    .company-line{line-height:1.45}
-    .tax-title{width:62mm;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:500;border-left:1px solid #222}
+/* =====================================================
+   PAGE
+===================================================== */
 
-    .meta-left{width:55%;border-right:1px solid #222}
-    .meta-right{width:45%}
-    .meta-row{display:flex;min-height:7mm;border-bottom:1px solid #222}
-    .meta-row:last-child{border-bottom:0}
-    .meta-label{width:35%;padding:5px 7px;font-weight:600}
-    .meta-value{flex:1;padding:5px 7px}
-
-    .two-col>div{width:50%;min-height:35mm}
-    .box-title{font-weight:700;margin-bottom:5px}
-    .customer-name{font-size:13px;font-weight:700;margin-bottom:3px}
-    .address{white-space:pre-line;line-height:1.35}
-
-    .subject{min-height:14mm;padding:7px;border-bottom:1px solid #222}
-    .subject b{display:block;margin-bottom:4px}
-
-    table{width:100%;border-collapse:collapse;table-layout:fixed}
-    th,td{border-right:1px solid #222;border-bottom:1px solid #222;padding:5px 5px;vertical-align:top}
-    th:last-child,td:last-child{border-right:0}
-    th{font-weight:700;text-align:center;background:#fafafa}
-    .center{text-align:center}
-    .right{text-align:right}
-    .item-desc{white-space:pre-line;line-height:1.35;min-height:26mm}
-    .small{font-size:9px;color:#333}
-    .w-no{width:7%}.w-desc{width:31%}.w-qty{width:9%}.w-rate{width:10%}
-    .w-tax{width:10%}.w-taxamt{width:10%}.w-amount{width:13%}
-
-    .summary-row{display:flex;min-height:15mm;border-bottom:1px solid #222}
-    .words{width:55%;padding:7px;border-right:1px solid #222}
-    .summary{width:45%;padding:0}
-    .summary-line{display:flex;justify-content:space-between;padding:5px 7px}
-    .grand{font-size:14px;font-weight:700;border-top:1px solid #222;padding-top:6px}
-
-    .lower{display:flex;min-height:50mm}
-    .notes{width:55%;padding:7px;border-right:1px solid #222}
-    .bank{margin-top:8px;line-height:1.45}
-    .signature{width:45%;display:flex;flex-direction:column;justify-content:space-between;padding:7px;text-align:center}
-    .signature-company{font-size:13px;font-weight:700;margin-top:8px}
-    .signature-space{height:22mm}
-    .signature-line{border-top:1px solid #555;padding-top:4px}
-
-    .bottom{display:flex;min-height:48mm;border-top:1px solid #222}
-    .qr{width:28%;padding:7px;border-right:1px solid #222;text-align:center}
-    .qr img{width:34mm;height:34mm;object-fit:contain}
-    .qr-placeholder{width:34mm;height:34mm;border:1px dashed #777;margin:0 auto 4px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:10px}
-    .einvoice{flex:1;padding:7px}
-    .irn{word-break:break-all;font-family:monospace;font-size:9px}
-
-    .print-actions{position:fixed;right:18px;top:18px;display:flex;gap:8px}
-    .print-actions button{border:0;background:#111;color:#fff;padding:10px 14px;border-radius:6px;cursor:pointer;font-weight:700}
-    .print-actions button.secondary{background:#666}
-
-    @media print{
-        .print-actions{display:none}
-        .invoice{width:194mm;min-height:280mm;border:1px solid #222}
-        body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    }
-</style>
-</head>
-<body>
-<div class="print-actions">
-    <button onclick="window.print()">Print Invoice</button>
-    <button class="secondary" onclick="window.close()">Close</button>
-</div>
-
-<div class="invoice">
-    <div class="header">
-        <div class="company">
-            <div class="company-name">${escapeHTML(businessName)}</div>
-            <div class="company-line">${escapeHTML(businessAddress)}</div>
-            ${businessPhone ? `<div class="company-line">Phone: ${escapeHTML(businessPhone)}</div>` : ""}
-            ${businessEmail ? `<div class="company-line">Email: ${escapeHTML(businessEmail)}</div>` : ""}
-            ${businessGSTIN ? `<div class="company-line"><b>GSTIN:</b> ${escapeHTML(businessGSTIN)}</div>` : ""}
-        </div>
-        <div class="tax-title">TAX INVOICE</div>
-    </div>
-
-    <div class="row">
-        <div class="meta-left">
-            <div class="meta-row"><div class="meta-label">Invoice No.</div><div class="meta-value"><b>${escapeHTML(invoiceNo)}</b></div></div>
-            <div class="meta-row"><div class="meta-label">Invoice Date</div><div class="meta-value">${escapeHTML(invoiceDate)}</div></div>
-            <div class="meta-row"><div class="meta-label">Terms</div><div class="meta-value">${escapeHTML(terms)}</div></div>
-            <div class="meta-row"><div class="meta-label">Due Date</div><div class="meta-value">${escapeHTML(dueDate)}</div></div>
-            <div class="meta-row"><div class="meta-label">E-Way Bill #</div><div class="meta-value">${escapeHTML(order.eWayBill || order.ewayBill || "")}</div></div>
-        </div>
-        <div class="meta-right">
-            <div class="meta-row"><div class="meta-label">Place of Supply</div><div class="meta-value">${escapeHTML(placeOfSupply)} (${escapeHTML(businessStateCode)})</div></div>
-        </div>
-    </div>
-
-    <div class="row two-col">
-        <div class="cell">
-            <div class="box-title">Bill To</div>
-            <div class="customer-name">${escapeHTML(customerName)}</div>
-            <div class="address">${escapeHTML(customerAddress || customerPhone || "")}</div>
-            ${customerEmail ? `<div class="address">${escapeHTML(customerEmail)}</div>` : ""}
-            ${customerGSTIN ? `<div class="address"><b>GSTIN:</b> ${escapeHTML(customerGSTIN)}</div>` : ""}
-        </div>
-        <div class="cell">
-            <div class="box-title">Ship To</div>
-            <div class="customer-name">${escapeHTML(customerName)}</div>
-            <div class="address">${escapeHTML(customerAddress || "")}</div>
-            ${customerGSTIN ? `<div class="address"><b>GSTIN:</b> ${escapeHTML(customerGSTIN)}</div>` : ""}
-        </div>
-    </div>
-
-    <div class="subject">
-        <b>Subject:</b>
-        ${escapeHTML(subject)}
-    </div>
-
-    <table>
-        <thead>
-            <tr>
-                <th class="w-no">#</th>
-                <th class="w-desc">Item &amp; Description</th>
-                <th class="w-qty">Qty</th>
-                <th class="w-rate">Rate</th>
-                <th class="w-tax">CGST<br>%</th>
-                <th class="w-taxamt">CGST<br>Amt</th>
-                <th class="w-tax">SGST<br>%</th>
-                <th class="w-taxamt">SGST<br>Amt</th>
-                <th class="w-amount">Amount</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td class="center">1</td>
-                <td class="item-desc">${escapeHTML(description)}</td>
-                <td class="center">${qty.toLocaleString("en-IN")}<br><span class="small">pcs</span></td>
-                <td class="right">${money(rate)}</td>
-                <td class="center">${cgstRate}%</td>
-                <td class="right">${money(cgstAmount)}</td>
-                <td class="center">${sgstRate}%</td>
-                <td class="right">${money(sgstAmount)}</td>
-                <td class="right"><b>${money(grandTotal)}</b></td>
-            </tr>
-        </tbody>
-    </table>
-
-    <div class="summary-row">
-        <div class="words">
-            <b>Total In Words</b>
-            <div style="margin-top:7px;font-weight:700;font-style:italic">${escapeHTML(amountWords)}</div>
-        </div>
-        <div class="summary">
-            <div class="summary-line"><span>Sub Total</span><b>${money(subTotal)}</b></div>
-            <div class="summary-line"><span>CGST (${cgstRate}%)</span><b>${money(cgstAmount)}</b></div>
-            <div class="summary-line"><span>SGST (${sgstRate}%)</span><b>${money(sgstAmount)}</b></div>
-            <div class="summary-line grand"><span>Total</span><b>${money(grandTotal)}</b></div>
-        </div>
-    </div>
-
-    <div class="lower">
-        <div class="notes">
-            <b>Notes</b>
-            <div style="white-space:pre-line;margin-top:5px">${escapeHTML(order.notes || "")}</div>
-            ${bankName || bankAccount || bankIFSC || bankBranch ? `
-                <div class="bank">
-                    <b>Bank Details for Transfer:</b><br>
-                    Company Name: ${escapeHTML(businessName)}<br>
-                    ${bankName ? `Bank: ${escapeHTML(bankName)}<br>` : ""}
-                    ${bankAccount ? `Bank Account No: ${escapeHTML(bankAccount)}<br>` : ""}
-                    ${bankIFSC ? `RTGS/NEFT/IFSC Code: ${escapeHTML(bankIFSC)}<br>` : ""}
-                    ${bankBranch ? `Branch: ${escapeHTML(bankBranch)}` : ""}
-                </div>` : ""}
-        </div>
-        <div class="signature">
-            <div class="signature-company">${escapeHTML(businessName)}</div>
-            <div class="signature-space"></div>
-            <div class="signature-line">Authorized Signature</div>
-        </div>
-    </div>
-
-    <div class="bottom">
-        <div class="qr">
-            ${qrHtml}
-        </div>
-        <div class="einvoice">
-            <b>e-Invoice Details</b>
-            <div style="margin-top:8px">IRN:</div>
-            <div class="irn">${escapeHTML(order.irn || order.IRN || "")}</div>
-            <div style="margin-top:7px">Ack No.: <b>${escapeHTML(order.ackNo || order.ackNumber || "")}</b></div>
-            <div style="margin-top:5px">Ack Date: <b>${escapeHTML(order.ackDate || "")}</b></div>
-            <div style="margin-top:14px" class="small">E-invoicing details are shown only when they have been entered in the order data.</div>
-        </div>
-    </div>
-</div>
-
-<script>
-window.addEventListener("load", function(){
-    setTimeout(function(){ window.focus(); }, 100);
-});
-</script>
-</body>
-</html>`);
-
-    win.document.close();
-    win.focus();
+@page{
+    size:A4 portrait;
+    margin:8mm;
 }
 
+*{
+    box-sizing:border-box;
+}
+
+html,
+body{
+
+    margin:0;
+    padding:0;
+
+    background:#fff;
+
+    color:#111;
+
+    font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
+}
+
+body{
+    font-size:10px;
+}
+
+
+/* =====================================================
+   MAIN INVOICE
+===================================================== */
+
+.invoice{
+
+    width:194mm;
+
+    min-height:280mm;
+
+    margin:0 auto;
+
+    border:1px solid #222;
+
+    background:#fff;
+}
+
+
+/* =====================================================
+   COMMON
+===================================================== */
+
+.row{
+    display:flex;
+}
+
+.cell{
+    border-right:1px solid #222;
+    border-bottom:1px solid #222;
+    padding:6px 7px;
+}
+
+.cell:last-child{
+    border-right:0;
+}
+
+
+/* =====================================================
+   HEADER
+===================================================== */
+
+.header{
+
+    display:flex;
+
+    min-height:27mm;
+
+    border-bottom:1px solid #222;
+}
+
+.company{
+
+    flex:1;
+
+    padding:8px 9px;
+}
+
+.company-name{
+
+    font-size:18px;
+
+    font-weight:700;
+
+    margin-bottom:4px;
+}
+
+.company-line{
+
+    line-height:1.4;
+}
+
+.tax-title{
+
+    width:67mm;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    font-size:23px;
+
+    font-weight:500;
+
+    border-left:1px solid #222;
+}
+
+
+/* =====================================================
+   INVOICE META
+===================================================== */
+
+.meta-left{
+
+    width:55%;
+
+    border-right:1px solid #222;
+}
+
+.meta-right{
+
+    width:45%;
+}
+
+.meta-row{
+
+    display:flex;
+
+    min-height:7mm;
+
+    border-bottom:1px solid #222;
+}
+
+.meta-row:last-child{
+    border-bottom:0;
+}
+
+.meta-label{
+
+    width:42%;
+
+    padding:4px 6px;
+
+    font-weight:600;
+}
+
+.meta-value{
+
+    flex:1;
+
+    padding:4px 6px;
+}
+
+
+/* =====================================================
+   BILL TO / SHIP TO
+===================================================== */
+
+.party-box{
+
+    width:50%;
+
+    min-height:35mm;
+
+    padding:7px;
+
+    border-right:1px solid #222;
+}
+
+.party-box:last-child{
+    border-right:0;
+}
+
+.party-title{
+
+    font-weight:700;
+
+    font-size:11px;
+
+    margin-bottom:5px;
+}
+
+.customer-name{
+
+    font-size:12px;
+
+    font-weight:700;
+
+    margin-bottom:3px;
+}
+
+.address{
+
+    white-space:pre-line;
+
+    line-height:1.35;
+}
+
+.party-line{
+
+    line-height:1.35;
+
+    margin-top:2px;
+}
+
+
+/* =====================================================
+   SUBJECT
+===================================================== */
+
+.subject{
+
+    min-height:14mm;
+
+    padding:7px;
+
+    border-bottom:1px solid #222;
+}
+
+.subject-title{
+
+    font-weight:700;
+
+    margin-bottom:4px;
+}
+
+
+/* =====================================================
+   ITEM TABLE
+===================================================== */
+
+table{
+
+    width:100%;
+
+    border-collapse:collapse;
+
+    table-layout:fixed;
+}
+
+th,
+td{
+
+    border-right:1px solid #222;
+
+    border-bottom:1px solid #222;
+
+    padding:4px 4px;
+
+    vertical-align:top;
+}
+
+th:last-child,
+td:last-child{
+
+    border-right:0;
+}
+
+th{
+
+    font-weight:700;
+
+    text-align:center;
+
+    background:#fafafa;
+}
+
+.center{
+    text-align:center;
+}
+
+.right{
+    text-align:right;
+}
+
+.item-desc{
+
+    white-space:pre-line;
+
+    line-height:1.3;
+
+    min-height:30mm;
+}
+
+.small{
+
+    font-size:8.5px;
+
+    color:#333;
+}
+
+
+/* COLUMN WIDTHS */
+
+.w-no{
+    width:6%;
+}
+
+.w-desc{
+    width:29%;
+}
+
+.w-qty{
+    width:9%;
+}
+
+.w-rate{
+    width:10%;
+}
+
+.w-cgst{
+    width:10%;
+}
+
+.w-cgstamt{
+    width:10%;
+}
+
+.w-sgst{
+    width:10%;
+}
+
+.w-sgstamt{
+    width:10%;
+}
+
+.w-amount{
+    width:13%;
+}
+
+
+/* =====================================================
+   SUMMARY
+===================================================== */
+
+.summary-row{
+
+    display:flex;
+
+    min-height:27mm;
+
+    border-bottom:1px solid #222;
+}
+
+.words{
+
+    width:55%;
+
+    padding:7px;
+
+    border-right:1px solid #222;
+}
+
+.amount-words{
+
+    margin-top:6px;
+
+    font-weight:700;
+
+    font-style:italic;
+
+    line-height:1.4;
+}
+
+.summary{
+
+    width:45%;
+}
+
+.summary-line{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    padding:4px 7px;
+}
+
+.summary-grand{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    padding:5px 7px;
+
+    font-size:14px;
+
+    font-weight:700;
+
+    border-top:1px solid #222;
+}
+
+
+/* =====================================================
+   LOWER SECTION
+===================================================== */
+
+.lower{
+
+    display:flex;
+
+    min-height:67mm;
+
+    border-bottom:1px solid #222;
+}
+
+.notes{
+
+    width:55%;
+
+    padding:7px;
+
+    border-right:1px solid #222;
+}
+
+.notes-title{
+
+    font-weight:700;
+
+    margin-bottom:4px;
+}
+
+.note-text{
+
+    white-space:pre-line;
+
+    line-height:1.4;
+}
+
+.bank{
+
+    margin-top:9px;
+
+    line-height:1.4;
+}
+
+.bank-title{
+
+    font-weight:700;
+
+    margin-bottom:2px;
+}
+
+
+/* =====================================================
+   SIGNATURE
+===================================================== */
+
+.signature{
+
+    width:45%;
+
+    display:flex;
+
+    flex-direction:column;
+
+    justify-content:space-between;
+
+    text-align:center;
+
+    padding:7px;
+}
+
+.signature-company{
+
+    font-size:14px;
+
+    font-weight:700;
+
+    margin-top:3px;
+}
+
+.signature-space{
+
+    height:25mm;
+}
+
+.signature-line{
+
+    border-top:1px solid #555;
+
+    padding-top:4px;
+}
+
+
+/* =====================================================
+   BOTTOM
+===================================================== */
+
+.bottom{
+
+    display:flex;
+
+    min-height:52mm;
+}
+
+
+/* UPI */
+
+.qr-section{
+
+    width:30%;
+
+    padding:7px;
+
+    border-right:1px solid #222;
+
+    text-align:center;
+}
+
+.upi-qr{
+
+    width:35mm;
+
+    height:35mm;
+
+    object-fit:contain;
+}
+
+.qr-placeholder{
+
+    width:35mm;
+
+    height:35mm;
+
+    margin:0 auto 4px;
+
+    border:1px dashed #777;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    text-align:center;
+
+    font-size:9px;
+}
+
+.scan-text{
+
+    font-size:9px;
+
+    margin-top:2px;
+}
+
+
+/* E-INVOICE */
+
+.einvoice{
+
+    flex:1;
+
+    padding:7px;
+}
+
+.einvoice-title{
+
+    font-weight:700;
+
+    font-size:11px;
+
+    margin-bottom:8px;
+}
+
+.irn{
+
+    word-break:break-all;
+
+    font-family:monospace;
+
+    font-size:8.5px;
+
+    line-height:1.35;
+}
+
+.einvoice-line{
+
+    margin-top:6px;
+}
+
+
+/* =====================================================
+   PRINT BUTTON
+===================================================== */
+
+.print-actions{
+
+    position:fixed;
+
+    right:18px;
+
+    top:18px;
+
+    display:flex;
+
+    gap:8px;
+}
+
+.print-actions button{
+
+    border:0;
+
+    background:#111;
+
+    color:#fff;
+
+    padding:10px 14px;
+
+    border-radius:6px;
+
+    cursor:pointer;
+
+    font-weight:700;
+}
+
+.print-actions button.secondary{
+
+    background:#666;
+}
+
+
+/* =====================================================
+   PRINT
+===================================================== */
+
+@media print{
+
+    .print-actions{
+        display:none;
+    }
+
+    .invoice{
+
+        width:194mm;
+
+        min-height:280mm;
+
+        border:1px solid #222;
+    }
+
+    body{
+
+        -webkit-print-color-adjust:exact;
+
+        print-color-adjust:exact;
+    }
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<!-- PRINT BUTTONS -->
+
+<div class="print-actions">
+
+    <button onclick="window.print()">
+        Print Invoice
+    </button>
+
+    <button
+        class="secondary"
+        onclick="window.close()"
+    >
+        Close
+    </button>
+
+</div>
+
+
+<!-- =====================================================
+     INVOICE
+===================================================== -->
+
+<div class="invoice">
+
+
+    <!-- HEADER -->
+
+    <div class="header">
+
+        <div class="company">
+
+            <div class="company-name">
+                ${escapeHTML(businessName)}
+            </div>
+
+            ${
+                businessAddress
+                    ? `
+                        <div class="company-line">
+                            ${escapeHTML(businessAddress)}
+                        </div>
+                      `
+                    : ""
+            }
+
+            ${
+                businessPhone
+                    ? `
+                        <div class="company-line">
+                            Phone: ${escapeHTML(businessPhone)}
+                        </div>
+                      `
+                    : ""
+            }
+
+            ${
+                businessEmail
+                    ? `
+                        <div class="company-line">
+                            Email: ${escapeHTML(businessEmail)}
+                        </div>
+                      `
+                    : ""
+            }
+
+            ${
+                businessGSTIN
+                    ? `
+                        <div class="company-line">
+                            <b>GSTIN:</b>
+                            ${escapeHTML(businessGSTIN)}
+                        </div>
+                      `
+                    : ""
+            }
+
+        </div>
+
+
+        <div class="tax-title">
+            TAX INVOICE
+        </div>
+
+    </div>
+
+
+
+    <!-- META -->
+
+    <div class="row">
+
+        <div class="meta-left">
+
+            <div class="meta-row">
+
+                <div class="meta-label">
+                    Invoice No.
+                </div>
+
+                <div class="meta-value">
+                    <b>
+                        ${escapeHTML(invoiceNo)}
+                    </b>
+                </div>
+
+            </div>
+
+
+            <div class="meta-row">
+
+                <div class="meta-label">
+                    Invoice Date
+                </div>
+
+                <div class="meta-value">
+                    ${escapeHTML(invoiceDate)}
+                </div>
+
+            </div>
+
+
+            <div class="meta-row">
+
+                <div class="meta-label">
+                    Terms
+                </div>
+
+                <div class="meta-value">
+                    ${escapeHTML(terms)}
+                </div>
+
+            </div>
+
+
+            <div class="meta-row">
+
+                <div class="meta-label">
+                    Due Date
+                </div>
+
+                <div class="meta-value">
+                    ${escapeHTML(dueDate)}
+                </div>
+
+            </div>
+
+
+            <div class="meta-row">
+
+                <div class="meta-label">
+                    E-Way Bill #
+                </div>
+
+                <div class="meta-value">
+
+                    ${escapeHTML(
+                        order.eWayBill ||
+                        order.ewayBill ||
+                        ""
+                    )}
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div class="meta-right">
+
+            <div class="meta-row">
+
+                <div class="meta-label">
+                    Place of Supply
+                </div>
+
+                <div class="meta-value">
+
+                    ${escapeHTML(placeOfSupply)}
+                    (${escapeHTML(businessStateCode)})
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- BILL TO / SHIP TO -->
+
+    <div class="row">
+
+
+        <!-- BILL TO -->
+
+        <div class="party-box">
+
+            <div class="party-title">
+                Bill To
+            </div>
+
+            <div class="customer-name">
+                ${escapeHTML(customerName)}
+            </div>
+
+            ${
+                customerAddress
+                    ? `
+                        <div class="address">
+                            ${escapeHTML(customerAddress)}
+                        </div>
+                      `
+                    : ""
+            }
+
+            ${
+                customerPhone
+                    ? `
+                        <div class="party-line">
+                            Phone:
+                            ${escapeHTML(customerPhone)}
+                        </div>
+                      `
+                    : ""
+            }
+
+            ${
+                customerEmail
+                    ? `
+                        <div class="party-line">
+                            ${escapeHTML(customerEmail)}
+                        </div>
+                      `
+                    : ""
+            }
+
+            ${
+                customerGSTIN
+                    ? `
+                        <div class="party-line">
+                            <b>GSTIN:</b>
+                            ${escapeHTML(customerGSTIN)}
+                        </div>
+                      `
+                    : ""
+            }
+
+        </div>
+
+
+
+        <!-- SHIP TO -->
+
+        <div class="party-box">
+
+            <div class="party-title">
+                Ship To
+            </div>
+
+            <div class="customer-name">
+                ${escapeHTML(customerName)}
+            </div>
+
+            ${
+                shippingAddress
+                    ? `
+                        <div class="address">
+                            ${escapeHTML(shippingAddress)}
+                        </div>
+                      `
+                    : `
+                        <div class="address">
+                            Shipping address not provided
+                        </div>
+                      `
+            }
+
+            ${
+                shippingPhone
+                    ? `
+                        <div class="party-line">
+                            Phone:
+                            ${escapeHTML(shippingPhone)}
+                        </div>
+                      `
+                    : ""
+            }
+
+            ${
+                customerGSTIN
+                    ? `
+                        <div class="party-line">
+                            <b>GSTIN:</b>
+                            ${escapeHTML(customerGSTIN)}
+                        </div>
+                      `
+                    : ""
+            }
+
+        </div>
+
+    </div>
+
+
+
+    <!-- SUBJECT -->
+
+    <div class="subject">
+
+        <div class="subject-title">
+            Subject:
+        </div>
+
+        ${escapeHTML(subject)}
+
+    </div>
+
+
+
+    <!-- ITEMS -->
+
+    <table>
+
+        <thead>
+
+            <tr>
+
+                <th class="w-no">
+                    #
+                </th>
+
+                <th class="w-desc">
+                    Item &amp; Description
+                </th>
+
+                <th class="w-qty">
+                    Qty
+                </th>
+
+                <th class="w-rate">
+                    Rate
+                </th>
+
+                <th class="w-cgst">
+                    CGST<br>%
+                </th>
+
+                <th class="w-cgstamt">
+                    CGST<br>Amt
+                </th>
+
+                <th class="w-sgst">
+                    SGST<br>%
+                </th>
+
+                <th class="w-sgstamt">
+                    SGST<br>Amt
+                </th>
+
+                <th class="w-amount">
+                    Amount
+                </th>
+
+            </tr>
+
+        </thead>
+
+
+        <tbody>
+
+            <tr>
+
+                <td class="center">
+                    1
+                </td>
+
+
+                <td class="item-desc">
+
+                    ${escapeHTML(description)}
+
+                </td>
+
+
+                <td class="center">
+
+                    ${qty.toLocaleString("en-IN")}
+
+                    <br>
+
+                    <span class="small">
+                        pcs
+                    </span>
+
+                </td>
+
+
+                <td class="right">
+
+                    ${money(rate)}
+
+                </td>
+
+
+                <td class="center">
+
+                    ${cgstRate}%
+
+                </td>
+
+
+                <td class="right">
+
+                    ${money(cgstAmount)}
+
+                </td>
+
+
+                <td class="center">
+
+                    ${sgstRate}%
+
+                </td>
+
+
+                <td class="right">
+
+                    ${money(sgstAmount)}
+
+                </td>
+
+
+                <td class="right">
+
+                    <b>
+                        ${money(subTotal)}
+                    </b>
+
+                </td>
+
+            </tr>
+
+        </tbody>
+
+    </table>
+
+
+
+    <!-- SUMMARY -->
+
+    <div class="summary-row">
+
+
+        <div class="words">
+
+            <b>
+                Total In Words
+            </b>
+
+            <div class="amount-words">
+
+                ${escapeHTML(amountWords)}
+
+            </div>
+
+        </div>
+
+
+        <div class="summary">
+
+            <div class="summary-line">
+
+                <span>
+                    Sub Total
+                </span>
+
+                <b>
+                    ${money(subTotal)}
+                </b>
+
+            </div>
+
+
+            <div class="summary-line">
+
+                <span>
+                    CGST (${cgstRate}%)
+                </span>
+
+                <b>
+                    ${money(cgstAmount)}
+                </b>
+
+            </div>
+
+
+            <div class="summary-line">
+
+                <span>
+                    SGST (${sgstRate}%)
+                </span>
+
+                <b>
+                    ${money(sgstAmount)}
+                </b>
+
+            </div>
+
+
+            <div class="summary-grand">
+
+                <span>
+                    Total
+                </span>
+
+                <b>
+                    ${money(grandTotal)}
+                </b>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- NOTES + BANK + SIGNATURE -->
+
+    <div class="lower">
+
+
+        <div class="notes">
+
+            <div class="notes-title">
+                Notes
+            </div>
+
+            <div class="note-text">
+
+                ${escapeHTML(order.notes || "")}
+
+            </div>
+
+
+            ${
+                bankName ||
+                bankAccount ||
+                bankIFSC ||
+                bankBranch
+
+                ? `
+
+                    <div class="bank">
+
+                        <div class="bank-title">
+                            Bank Details for Transfer:
+                        </div>
+
+                        ${
+                            businessName
+                                ? `
+                                    Company Name:
+                                    ${escapeHTML(businessName)}
+                                    <br>
+                                  `
+                                : ""
+                        }
+
+                        ${
+                            bankName
+                                ? `
+                                    Bank:
+                                    ${escapeHTML(bankName)}
+                                    <br>
+                                  `
+                                : ""
+                        }
+
+                        ${
+                            bankAccount
+                                ? `
+                                    Bank Account No:
+                                    ${escapeHTML(bankAccount)}
+                                    <br>
+                                  `
+                                : ""
+                        }
+
+                        ${
+                            bankIFSC
+                                ? `
+                                    RTGS/NEFT/IFSC Code:
+                                    ${escapeHTML(bankIFSC)}
+                                    <br>
+                                  `
+                                : ""
+                        }
+
+                        ${
+                            bankBranch
+                                ? `
+                                    Branch:
+                                    ${escapeHTML(bankBranch)}
+                                  `
+                                : ""
+                        }
+
+                    </div>
+
+                  `
+
+                : ""
+            }
+
+        </div>
+
+
+
+        <div class="signature">
+
+            <div class="signature-company">
+
+                ${escapeHTML(businessName)}
+
+            </div>
+
+
+            <div class="signature-space"></div>
+
+
+            <div class="signature-line">
+
+                Authorized Signature
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- UPI + E-INVOICE -->
+
+    <div class="bottom">
+
+
+        <div class="qr-section">
+
+            ${qrHtml}
+
+        </div>
+
+
+
+        <div class="einvoice">
+
+            <div class="einvoice-title">
+
+                e-Invoice Details
+
+            </div>
+
+
+            <div>
+                IRN:
+            </div>
+
+            <div class="irn">
+
+                ${escapeHTML(
+                    order.irn ||
+                    order.IRN ||
+                    ""
+                )}
+
+            </div>
+
+
+            <div class="einvoice-line">
+
+                Ack No.:
+
+                <b>
+                    ${escapeHTML(
+                        order.ackNo ||
+                        order.ackNumber ||
+                        ""
+                    )}
+                </b>
+
+            </div>
+
+
+            <div class="einvoice-line">
+
+                Ack Date:
+
+                <b>
+                    ${escapeHTML(
+                        order.ackDate ||
+                        ""
+                    )}
+                </b>
+
+            </div>
+
+
+            <div
+                class="einvoice-line small"
+                style="margin-top:14px"
+            >
+
+                E-invoicing details are shown only
+                when they have been entered in the
+                order data.
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+</div>
+
+
+
+<script>
+
+window.addEventListener(
+    "load",
+    function(){
+
+        setTimeout(
+            function(){
+
+                window.focus();
+
+            },
+            100
+        );
+
+    }
+);
+
+</script>
+
+
+</body>
+
+</html>
+
+`);
+
+    win.document.close();
+
+    win.focus();
+}
 
 /* =========================================================
    INDIAN NUMBER TO WORDS
